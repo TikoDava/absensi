@@ -313,7 +313,7 @@ with tab_master:
 # TAB 1: INPUT ABSENSI HARIAN
 # ----------------------------------------------------
 with tab_input:
-    st.header("Input Kehadiran Harian (Disimpan di Sheets)")
+    st.header("Input Kehadiran Harian")
     
     if st.session_state.df_karyawan.empty:
         st.warning("Tambahkan nama karyawan di tab 'Kelola Karyawan' terlebih dahulu.")
@@ -495,4 +495,5 @@ with tab_harian:
             )
         else:
             st.info("Tidak ada data harian untuk rentang tanggal yang dipilih.")
+
 
