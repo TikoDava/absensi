@@ -13,7 +13,7 @@ APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxUaxNhx-U-2bSSpQDlut
 SHEET_KARYAWAN = 'Karyawan'
 SHEET_ABSENSI = 'Absensi Harian'
 
-STATUS_ABSENSI = ['hadir', 'sakit', 'alfa', 'resign', 'kosong']
+STATUS_ABSENSI = ['hadir', 'sakit', 'alfa', 'resign', 'libur']
 
 # --- FUNGSI KOMUNIKASI API (Apps Script) ---
 
@@ -495,5 +495,6 @@ with tab_harian:
             )
         else:
             st.info("Tidak ada data harian untuk rentang tanggal yang dipilih.")
+
 
 
