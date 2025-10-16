@@ -290,7 +290,7 @@ tab_input, tab_rekap, tab_master, tab_harian = st.tabs(["✍️ Input Absensi Ha
 # TAB 3: KELOLA KARYAWAN (MASTER LIST)
 # ----------------------------------------------------
 with tab_master:
-    st.header("Kelola Data Karyawan (Disimpan di Sheets)")
+    st.header("Kelola Data Karyawan")
 
     with st.form("form_karyawan_baru", clear_on_submit=True):
         nama_baru = st.text_input("Nama Karyawan Baru (Input Sekali Saja)")
@@ -495,3 +495,4 @@ with tab_harian:
             )
         else:
             st.info("Tidak ada data harian untuk rentang tanggal yang dipilih.")
+
