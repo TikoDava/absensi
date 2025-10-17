@@ -566,7 +566,7 @@ tab_input_cepat, tab_input, tab_rekap, tab_master, tab_harian = st.tabs([
 # TAB INPUT CEPAT HARIAN (BERBASIS TOMBOL)
 # ----------------------------------------------------
 with tab_input_cepat:
-    st.header("Input Absensi Cepat Harian (Tombol)")
+    st.header("Input Absensi Cepat Harian")
     
     col1, col2 = st.columns([1, 4])
     with col1:
@@ -789,3 +789,4 @@ with tab_harian:
                 file_name=f'log_absensi_harian_{start_date}_to_{end_date}.csv',
                 mime='text/csv',
             )
+
