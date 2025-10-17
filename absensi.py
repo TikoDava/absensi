@@ -8,7 +8,7 @@ import time
 # --- KONFIGURASI DAN INIITALISASI ---
 
 # GANTI INI dengan URL Web App lengkap yang Anda dapatkan setelah Deploy Apps Script!
-APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxUaxNhx-U-2bSSpQDlutBekQa5VDTVLP0N1T5RWYvZJrXXzb-vRlJDLps_R4pcCsU1/exec' 
+APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxC0jeyLq2GBRrDp7r2SKAwSpVVg7rnefk87OHNTMAXJI1W0cfglGCnpP8OWUok7HWm/exec' 
 
 SHEET_KARYAWAN = 'Karyawan'
 SHEET_ABSENSI = 'Absensi Harian'
