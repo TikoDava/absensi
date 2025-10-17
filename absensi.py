@@ -429,7 +429,7 @@ def tampilkan_input_cepat_harian_button():
             button_type = 'primary' if is_active else 'secondary'
 
             cols[i+2].button(
-                STATUS_DISPLAY[status_key], # Teks tombol (Hanya Emoji/Teks Utama)
+                STATUS_DISPLAY[status_key].split(" ")[0], # Teks tombol (Hanya Emoji/Teks Utama)
                 on_click=handle_status_click,
                 args=(id_karyawan, tanggal_input, status_key),
                 key=f"btn_{id_karyawan}_{status_key}_{tanggal_input}",
@@ -566,7 +566,7 @@ tab_input_cepat, tab_input, tab_rekap, tab_master, tab_harian = st.tabs([
 # TAB INPUT CEPAT HARIAN (BERBASIS TOMBOL)
 # ----------------------------------------------------
 with tab_input_cepat:
-    st.header("Input Absensi Cepat Harian")
+    st.header("Input Absensi Cepat Harian (Tombol)")
     
     col1, col2 = st.columns([1, 4])
     with col1:
@@ -789,4 +789,3 @@ with tab_harian:
                 file_name=f'log_absensi_harian_{start_date}_to_{end_date}.csv',
                 mime='text/csv',
             )
-
