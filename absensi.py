@@ -8,13 +8,12 @@ import time
 # --- KONFIGURASI DAN INIITALISASI ---
 
 # GANTI INI dengan URL Web App lengkap yang Anda dapatkan setelah Deploy Apps Script!
-APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxUaxNhx-U-2bSSpQDlutBekQa5VDTVLP0N1T5RWYvZJrXXzb-vRlJDLps_R4pcCsU1/exec' 
+APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwaOxQ2ElWZlcmvdl3FgIATCJIvz4RqpXgd_FXl1clTCUpa_ToBHwByXrFdQKZjGXfD/exec' 
 
 SHEET_KARYAWAN = 'Karyawan'
 SHEET_ABSENSI = 'Absensi Harian'
 
 # DAFTAR STATUS LENGKAP
-# FIX: 'setengah_hari' diubah menjadi '1/2 hari' agar konsisten dengan display
 STATUS_ABSENSI = ['masuk', 'sakit', 'izin', 'alpha', '1/2 hari', 'resign', 'libur', 'kosong']
 
 # Peta Status untuk tampilan Button/Radio dan Key (untuk disimpan ke Sheets)
@@ -25,20 +24,20 @@ STATUS_DISPLAY = {
     'alpha': '❌ Alpha',
     '1/2 hari': '🌗 1/2 Hari',
     'resign': '🚪 Resign', 
-    'libur': '🌴 Libur',      
-    'kosong': '⚪ Kosong',    
+    'libur': '🌴 Libur', 
+    'kosong': '⚪ Kosong',
 }
 
 # Mapping untuk warna tombol (Saat tombol TIDAK aktif/secondary)
-STATUS_COLOR = {
+STATUS_COLOR =  {
     'masuk': 'primary', 
     'sakit': 'secondary',
     'izin': 'secondary',
     'alpha': 'primary', 
     '1/2 hari': 'secondary',
     'resign': 'primary', 
-    'libur': 'secondary',      
-    'kosong': 'secondary',    
+    'libur': 'secondary', 
+    'kosong': 'secondary', 
 }
 
 # --- FUNGSI KOMUNIKASI API (Apps Script) ---
@@ -195,9 +194,11 @@ def input_absensi(tanggal, nama_karyawan, status, produksi):
 
 
 # --- 4. FUNGSI REKAP BULANAN (BACA & PROSES DARI CACHE) ---
-# ... (Fungsi rekap_bulanan tidak diubah, karena tidak ada bug yang terlihat di blok ini) ...
 def rekap_bulanan(tahun, bulan):
-    """Mengambil data dari cache dan menghitung rekap."""
+    """
+    Mengambil data dari cache, memfilter, dan menghitung rekap.
+    FIXED: SyntaxError & 'df_absensi not defined' & 'cannot insert Tanggal'.
+    """
     
     data_absensi = get_absensi_data()
     
@@ -205,15 +206,18 @@ def rekap_bulanan(tahun, bulan):
         return pd.DataFrame()
         
     try:
-        df_absensi = pd.DataFrame(data_absensi)
+        # FIX: df_absensi didefinisikan di sini untuk menghindari "not defined" error
+        df_absensi = pd.DataFrame(data_absensi) 
         
         if df_absensi.empty:
+            # Jika absensi kosong, buat dataframe rekap dari df_karyawan
             df_rekap = st.session_state.df_karyawan.copy().reset_index()
-            for status in STATUS_ABSENSI:
-                df_rekap[status] = 0
-            df_rekap['Total Produksi'] = 0 
-            
-            kolom_rekap = ['Nama_Karyawan', 'Total Produksi'] + STATUS_ABSENSI 
+            kolom_rekap = ['Nama_Karyawan', 'Total Produksi'] + STATUS_ABSENSI
+            # Inisialisasi kolom
+            for col in kolom_rekap:
+                if col not in df_rekap.columns:
+                    df_rekap[col] = 0
+            df_rekap['Total Produksi'] = 0
             return df_rekap[kolom_rekap].sort_values(by='Nama_Karyawan').reset_index(drop=True)
 
         # --- PEMROSESAN DATA ---
@@ -233,19 +237,36 @@ def rekap_bulanan(tahun, bulan):
             (df_absensi['Tanggal'].dt.year == tahun) & 
             (df_absensi['Tanggal'].dt.month == bulan)
         ].copy() # Gunakan .copy() untuk menghindari SettingWithCopyWarning
+        
+        if df_filtered.empty: # Cek jika filter kosong
+            df_rekap = st.session_state.df_karyawan.copy().reset_index()
+            kolom_rekap = ['Nama_Karyawan', 'Total Produksi'] + STATUS_ABSENSI
+            for col in kolom_rekap:
+                if col not in df_rekap.columns:
+                    df_rekap[col] = 0
+            df_rekap['Total Produksi'] = 0
+            return df_rekap[kolom_rekap].sort_values(by='Nama_Karyawan').reset_index(drop=True)
 
-        # --- PERBAIKAN BUG 2X ABSENSI: Dapatkan STATUS dan PRODUKSI TERAKHIR per HARI ---
-        # Sortir data berdasarkan waktu, lalu ambil baris terakhir per karyawan per tanggal (status final hari itu)
+        # --- PERBAIKAN FINAL UNTUK KONFLIK NAMA KOLOM 'Tanggal' ---
+        
+        # 1. Tambahkan kolom 'Tanggal_Key' sebagai kunci grouping yang eksplisit
+        df_filtered['Tanggal_Key'] = df_filtered['Tanggal'].dt.normalize()
+        
+        # 2. Sortir dan Groupby berdasarkan Tanggal_Key
         df_final_daily = df_filtered.sort_values('Tanggal').groupby(
-            ['ID_Karyawan', df_filtered['Tanggal'].dt.date] # Grouping berdasarkan ID dan Tanggal (hanya tanggal)
+            ['ID_Karyawan', 'Tanggal_Key'] # Gunakan Tanggal_Key sebagai kunci grouping
         ).last().reset_index() # Ambil entri TERAKHIR (terbaru) untuk hari itu
         
-        # Kolom 'Tanggal' sekarang berisi objek date (dari .dt.date)
-        df_final_daily['Tanggal'] = pd.to_datetime(df_final_daily['Tanggal'])
+        # 3. Hapus kolom 'Tanggal' yang lama (hasil dari .last()) 
+        #    dan ganti namanya dengan 'Tanggal_Key'
+        df_final_daily = df_final_daily.drop(columns=['Tanggal'])
+        df_final_daily = df_final_daily.rename(columns={'Tanggal_Key': 'Tanggal'})
+
+        # Kolom 'Tanggal' sekarang berisi objek datetime (sudah dinormalisasi)
+        # dan tidak ada duplikasi.
 
         # Hitung jumlah status berdasarkan STATUS FINAL harian
         df_counts = df_final_daily.groupby(['ID_Karyawan', 'Status_Kehadiran']).size().unstack(fill_value=0)
-        
         # Hitung total produksi berdasarkan PRODUKSI FINAL harian
         df_produksi = df_final_daily.groupby('ID_Karyawan')['Produksi'].sum().reset_index()
         df_produksi = df_produksi.rename(columns={'Produksi': 'Total Produksi'})
@@ -389,7 +410,7 @@ def tampilkan_input_cepat_harian_button():
     for i, status_key in enumerate(STATUS_ABSENSI):
         # Tampilkan hanya label pendek (emoji/teks) di header
         # FIX: Gunakan split(" ")[0] untuk mengambil emoji/teks pertama
-        header_cols[i+2].markdown(f'**{STATUS_DISPLAY[status_key].split(" ")[0]}**', help=STATUS_DISPLAY[status_key]) 
+        header_cols[i+2].markdown(f'**{STATUS_DISPLAY[status_key]}**', help=STATUS_DISPLAY[status_key]) 
         
     st.markdown('***') # Garis pemisah Header
         
@@ -442,10 +463,6 @@ def tampilkan_input_cepat_harian_button():
         
         status_awal_ui = row['Status_Awal']
         produksi_awal_ui = row['Produksi_Awal']
-        
-        # Khusus: Jika status awal adalah '__NEW_ENTRY__', kita cek apakah status_final bukan 'kosong'
-        # atau jika produksi final bukan 0. Jika new entry, kita anggap '__NEW_ENTRY__' sama dengan 'kosong'
-        # untuk tujuan perbandingan, tetapi kita harus tetap upload entri 'kosong' pertama.
         
         is_new_entry = status_awal_ui == '__NEW_ENTRY__'
         
@@ -541,13 +558,13 @@ def tampilkan_input_cepat_harian_button():
                  # FIX: Hanya hapus key status dan prod yang terkait dengan tanggal yang sedang di-update
                  if key.startswith(f'status_') or key.startswith(f'prod_'):
                       if f'_{tanggal_input}' in key:
-                         del st.session_state[key]
+                          del st.session_state[key]
             
             st.rerun() # Muat ulang tampilan setelah berhasil
         else:
             placeholder_msg.error("Gagal mengunggah data. Periksa koneksi atau Apps Script URL Anda.")
             if failed_updates:
-                 st.warning(f"Semua karyawan gagal diperbarui (lihat detail error di atas): {', '.join(failed_updates)}.")
+                st.warning(f"Semua karyawan gagal diperbarui (lihat detail error di atas): {', '.join(failed_updates)}.")
 
 
 # --- 5. TAMPILAN STREAMLIT (DASHBOARD) ---
@@ -566,7 +583,7 @@ tab_input_cepat, tab_input, tab_rekap, tab_master, tab_harian = st.tabs([
 # TAB INPUT CEPAT HARIAN (BERBASIS TOMBOL)
 # ----------------------------------------------------
 with tab_input_cepat:
-    st.header("Input Absensi Cepat Harian (Tombol)")
+    st.header("Input Absensi Cepat Harian")
     
     col1, col2 = st.columns([1, 4])
     with col1:
@@ -780,12 +797,10 @@ with tab_harian:
                 'Produksi': 'Jumlah Produksi'
             })
             
-            st.dataframe(df_final.style.format({'Jumlah Produksi': '{:,}'}), hide_index=True, use_container_width=True)
-
-            csv_export = df_final.to_csv(index=False).encode('utf-8')
-            st.download_button(
-                label="📥 Unduh Log Harian (.csv)",
-                data=csv_export,
-                file_name=f'log_absensi_harian_{start_date}_to_{end_date}.csv',
-                mime='text/csv',
+            st.dataframe(
+                df_final.style.format({'Jumlah Produksi': '{:,}'}),
+                hide_index=True,
+                use_container_width=True
             )
+        else:
+            st.info("Tidak ada data yang cocok dengan rentang tanggal yang dipilih.")
